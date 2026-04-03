@@ -1,0 +1,51 @@
+# 1. Enable Rewrite Engine
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  
+  # If the requested filename exists, simply serve it
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # For any other request, redirect to index.html
+  # This supports both HashRouter and potential future BrowserRouter
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# 2. Security Headers
+<IfModule mod_headers.c>
+  # Prevent browsers from detecting the file type and incorrectly executing it
+  Header set X-Content-Type-Options "nosniff"
+  
+  # Protect against clickjacking
+  Header set X-Frame-Options "SAMEORIGIN"
+  
+  # Enable XSS protection in older browsers
+  Header set X-XSS-Protection "1; mode=block"
+  
+  # Keep Referrer information safe
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# 3. Prevent Directory Listing
+Options -Indexes
+
+# 4. Performance: Cache Static Assets
+<IfModule mod_expires.c>
+  ExpiresActive On
+  
+  # Images and Icons
+  ExpiresByType image/jpg "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/gif "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  
+  # CSS and JavaScript (Vite uses hashes in filenames, so long cache is safe)
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  
+  # Webfonts
+  ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
