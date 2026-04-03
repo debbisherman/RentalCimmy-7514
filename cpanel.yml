@@ -1,7 +1,7 @@
 ---
 deployment:
   tasks:
-    # FIXED: Added space after the dash for valid YAML syntax
+    # Space after '-' is REQUIRED for valid YAML
     - export DEPLOYPATH=/home/$(whoami)/public_html/
     
     # 1. Copy all built assets from dist to public_html
