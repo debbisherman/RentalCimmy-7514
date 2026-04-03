@@ -3,10 +3,12 @@ logs
 *.log
 npm-debug.log*
 
+# Dependencies
 node_modules
 
-# CRITICAL: Comment out 'dist' so you can push your build to cPanel
-# dist 
+# CRITICAL: We comment out 'dist' so that your LOCAL build 
+# can be committed and pushed to the cPanel repository.
+# dist
 
 dist-ssr
 *.local

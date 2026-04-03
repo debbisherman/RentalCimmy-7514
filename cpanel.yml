@@ -1,14 +1,14 @@
 ---
 deployment:
   tasks:
-    # Space after '-' is REQUIRED for valid YAML
+    # IMPORTANT: The space after the '-' is mandatory for valid YAML
     - export DEPLOYPATH=/home/$(whoami)/public_html/
     
-    # 1. Copy all built assets from dist to public_html
+    # 1. Copy the contents of the pre-built dist folder to public_html
     - /bin/cp -R dist/* $DEPLOYPATH
     
-    # 2. Ensure .htaccess is copied to the root
+    # 2. Ensure the .htaccess is copied to the root for SPA routing
     - /bin/cp dist/.htaccess $DEPLOYPATH.htaccess
     
-    # 3. Log deployment status
-    - echo "Deployment completed at $(date)" >> $DEPLOYPATH/deploy_log.txt
+    # 3. Log deployment for troubleshooting
+    - echo "Deployment successful at $(date)" >> $DEPLOYPATH/deploy_log.txt

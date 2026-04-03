@@ -6,13 +6,12 @@
   RewriteEngine On
   RewriteBase /
   
-  # Handle the "index.html" request
-  RewriteRule ^index\.html$ - [L]
+  # If the file exists, serve it (images, js, css)
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
 
-  # Redirect everything to index.html for SPA routing
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule . /index.html [L]
+  # Otherwise, send all requests to index.html (React Router handles the rest)
+  RewriteRule ^ index.html [L]
 </IfModule>
 
 # Prevent Directory Listing
