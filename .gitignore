@@ -3,23 +3,14 @@ logs
 *.log
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
 node_modules
-# dist  <-- IMPORTANT: Commented out so you can commit the build to Git for cPanel to see it
+# dist  <-- Keep this commented out so cPanel Git can see your build files!
 dist-ssr
 *.local
 
 # Editor directories and files
 .vscode/*
-!.vscode/extensions.json
 .idea
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
 .env
