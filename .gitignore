@@ -8,7 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
+# dist  <-- REMOVED or COMMENTED OUT so cPanel can see your build files
 dist-ssr
 *.local
 
