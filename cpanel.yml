@@ -1,15 +1,15 @@
 ---
 deployment:
   tasks:
-    # 1. Define the deployment path (adjust 'public_html' if using an addon domain)
-    - export DEPLOYPATH=/home/$(whoami)/public_html/
+    # 1. Define the deployment path (Fixed: added space after dash)
+    - export DEPLOYPATH=/home/$(whoami)/public_html
 
     # 2. Copy the built assets from the dist folder to the web root
-    # Note: Ensure you have run 'npm run build' before pushing or have a remote build process
-    - /bin/cp -R dist/* $DEPLOYPATH
+    # CRITICAL: You must run 'npm run build' locally and commit the 'dist' folder for this to work
+    - /bin/cp -R dist/* $DEPLOYPATH/
 
-    # 3. Ensure the .htaccess file is correctly placed
-    - /bin/cp dist/.htaccess $DEPLOYPATH.htaccess
+    # 3. Ensure the .htaccess file is correctly placed in the root
+    - /bin/cp dist/.htaccess $DEPLOYPATH/.htaccess
 
-    # 4. Optional: Log the deployment time
-    - echo "Deployment completed at $(date)" >> $DEPLOYPATH/deploy_log.txt
+    # 4. Optional: Log the deployment for debugging
+    - echo "Deployment successful at $(date)" >> $DEPLOYPATH/deploy_log.txt
