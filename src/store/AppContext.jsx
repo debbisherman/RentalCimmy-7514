@@ -15,14 +15,23 @@ export const AppProvider = ({ children }) => {
   const [payments, setPayments] = useState([]);
 
   useEffect(() => {
+    // If supabase failed to initialize, stop loading and show error
+    if (!supabase) {
+      setError("Database connection not configured.");
+      setLoading(false);
+      return;
+    }
+
     const initSession = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) throw sessionError;
         
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchProfile(session.user.id, session.user.email);
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        
+        if (currentUser) {
+          await fetchProfile(currentUser.id, currentUser.email);
         } else {
           setLoading(false);
         }
@@ -35,9 +44,11 @@ export const AppProvider = ({ children }) => {
     initSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id, session.user.email);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      
+      if (currentUser) {
+        fetchProfile(currentUser.id, currentUser.email);
       } else {
         setProfile(null);
         setRenters([]);
@@ -58,8 +69,13 @@ export const AppProvider = ({ children }) => {
         .maybeSingle();
 
       if (profileErr) throw profileErr;
-      
-      let finalProfile = data || { id: userId, email: userEmail, role: 'renter', full_name: 'User' };
+
+      let finalProfile = data || {
+        id: userId,
+        email: userEmail,
+        role: 'renter',
+        full_name: 'User'
+      };
 
       // Global Role Override for Super Admin
       if (userEmail === SUPER_ADMIN_EMAIL) {
@@ -70,22 +86,22 @@ export const AppProvider = ({ children }) => {
       await fetchData(finalProfile);
     } catch (err) {
       console.error('Profile Fetch Error:', err);
-      setError("Syncing profile...");
     } finally {
       setLoading(false);
     }
   };
 
   const fetchData = async (userProfile) => {
+    if (!userProfile || !supabase) return;
+
     try {
       const isAdmin = userProfile.role === 'landlord' || userProfile.role === 'super_admin';
-      
+
       if (isAdmin) {
         const [rRes, pRes] = await Promise.all([
           supabase.from('renters_20240520').select('*').order('name'),
           supabase.from('payments_20240520').select('*').order('date', { ascending: false })
         ]);
-        
         setRenters(rRes.data || []);
         setPayments(pRes.data || []);
       } else {
@@ -101,7 +117,7 @@ export const AppProvider = ({ children }) => {
             .select('*')
             .eq('renter_id', renterRecord.id)
             .order('date', { ascending: false });
-            
+          
           setRenters([renterRecord]);
           setPayments(pRes || []);
         }
@@ -112,12 +128,12 @@ export const AppProvider = ({ children }) => {
   };
 
   const value = {
-    user, 
-    profile, 
-    loading, 
-    error, 
+    user,
+    profile,
+    loading,
+    error,
     role: profile?.role || (user?.email === SUPER_ADMIN_EMAIL ? 'super_admin' : 'renter'),
-    renters, 
+    renters,
     payments,
     addRenter: async (d) => {
       const r = await supabase.from('renters_20240520').insert([{ ...d, landlord_id: user.id }]).select();
