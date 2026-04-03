@@ -1,15 +1,14 @@
 ---
 deployment:
   tasks:
-    # 1. Define the deployment path (Fixed syntax: space after dash)
+    # FIXED: Added space after the dash for valid YAML syntax
     - export DEPLOYPATH=/home/$(whoami)/public_html/
-
-    # 2. Copy the built assets from the dist folder to the web root
-    # Note: Ensure you run 'npm run build' and commit the 'dist' folder before pushing
+    
+    # 1. Copy all built assets from dist to public_html
     - /bin/cp -R dist/* $DEPLOYPATH
-
-    # 3. Ensure the .htaccess file is correctly placed
+    
+    # 2. Ensure .htaccess is copied to the root
     - /bin/cp dist/.htaccess $DEPLOYPATH.htaccess
-
-    # 4. Optional: Log the deployment time
+    
+    # 3. Log deployment status
     - echo "Deployment completed at $(date)" >> $DEPLOYPATH/deploy_log.txt
