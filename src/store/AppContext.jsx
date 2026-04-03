@@ -2,7 +2,13 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '../supabase/supabase';
 
 const AppContext = createContext();
-export const useApp = () => useContext(AppContext);
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
+};
 
 const SUPER_ADMIN_EMAIL = 'info@cimmeronstudios.com';
 
@@ -15,9 +21,9 @@ export const AppProvider = ({ children }) => {
   const [payments, setPayments] = useState([]);
 
   useEffect(() => {
-    // If supabase failed to initialize, stop loading and show error
+    // 1. Initial check for Supabase client
     if (!supabase) {
-      setError("Database connection not configured.");
+      setError("Database configuration missing. Please check your .env file.");
       setLoading(false);
       return;
     }
@@ -25,7 +31,13 @@ export const AppProvider = ({ children }) => {
     const initSession = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          // Don't crash the app, just treat as logged out
+          setLoading(false);
+          return;
+        }
         
         const currentUser = session?.user ?? null;
         setUser(currentUser);
@@ -36,13 +48,15 @@ export const AppProvider = ({ children }) => {
           setLoading(false);
         }
       } catch (err) {
-        console.error('Session Init Error:', err);
+        console.error('Safe Session Init Error:', err);
+        setError("Failed to connect to authentication service.");
         setLoading(false);
       }
     };
 
     initSession();
 
+    // 2. Auth State Listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
@@ -57,7 +71,9 @@ export const AppProvider = ({ children }) => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      if (subscription) subscription.unsubscribe();
+    };
   }, []);
 
   const fetchProfile = async (userId, userEmail) => {
@@ -77,7 +93,6 @@ export const AppProvider = ({ children }) => {
         full_name: 'User'
       };
 
-      // Global Role Override for Super Admin
       if (userEmail === SUPER_ADMIN_EMAIL) {
         finalProfile.role = 'super_admin';
       }

@@ -5,17 +5,22 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 /**
- * We wrap the client creation in a check to prevent the entire app 
- * from crashing if the environment variables are missing.
+ * Enhanced Safe Client Creation
+ * Prevents the app from crashing if variables are missing or malformed.
  */
 const createSafeClient = () => {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL === 'your-project-url') {
-    console.error('Supabase configuration is missing. Please check your .env file or environment variables.');
-    // Return a dummy client or null to prevent immediate crash
-    return null;
-  }
-
   try {
+    // Check if variables exist and are strings
+    if (!SUPABASE_URL || typeof SUPABASE_URL !== 'string' || SUPABASE_URL.includes('your-project')) {
+      console.warn('Supabase URL is missing or invalid.');
+      return null;
+    }
+
+    if (!SUPABASE_ANON_KEY || typeof SUPABASE_ANON_KEY !== 'string') {
+      console.warn('Supabase Anon Key is missing or invalid.');
+      return null;
+    }
+
     return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         persistSession: true,
@@ -24,7 +29,7 @@ const createSafeClient = () => {
       }
     });
   } catch (error) {
-    console.error('Failed to initialize Supabase client:', error);
+    console.error('Critical: Failed to initialize Supabase client:', error);
     return null;
   }
 };
