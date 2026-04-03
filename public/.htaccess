@@ -1,26 +1,22 @@
 # ----------------------------------------------------------------------
-# React SPA Configuration for cPanel
+# Optimized React SPA .htaccess for cPanel
 # ----------------------------------------------------------------------
-
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
   
-  # If the file exists, serve it (images, js, css)
-  RewriteCond %{REQUEST_FILENAME} -f
+  # 1. If the file exists as a real file or directory, serve it directly
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
-  # Otherwise, send all requests to index.html (React Router handles the rest)
+  # 2. Otherwise, send all requests to index.html
+  # This prevents the "text/html" MIME error for missing JS files
   RewriteRule ^ index.html [L]
 </IfModule>
 
-# Prevent Directory Listing
-Options -Indexes
-
-# Security Headers
-<IfModule mod_headers.c>
-  Header set X-Content-Type-Options "nosniff"
-  Header set X-Frame-Options "SAMEORIGIN"
-  Header set X-XSS-Protection "1; mode=block"
-  Header set Referrer-Policy "strict-origin-when-cross-origin"
+# Ensure JS files have the correct MIME type
+<IfModule mod_mime.c>
+  AddType application/javascript .js
+  AddType application/javascript .mjs
 </IfModule>
