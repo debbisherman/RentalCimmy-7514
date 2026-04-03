@@ -10,7 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@questlabs/react-sdk": "^2.2.92",
     "@supabase/supabase-js": "^2.43.4",
     "date-fns": "4.1.0",
     "framer-motion": "^11.0.8",

@@ -2,10 +2,9 @@
 logs
 *.log
 npm-debug.log*
-yarn-debug.log*
 
 node_modules
-# dist  <-- Keep this commented out so cPanel Git can see your build files!
+# dist  <-- Commented out so cPanel can see the build folder
 dist-ssr
 *.local
 

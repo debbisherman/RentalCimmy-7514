@@ -1,14 +1,14 @@
 ---
 deployment:
   tasks:
-    # FIXED: Added the mandatory space after the dash and before 'export'
+    # FIXED: Added space after the dash for valid YAML syntax
     - export DEPLOYPATH=/home/$(whoami)/public_html/
     
-    # 1. Copy all built assets from the dist folder to public_html
+    # 1. Copy all built assets from dist to public_html
     - /bin/cp -R dist/* $DEPLOYPATH
     
-    # 2. Explicitly copy .htaccess from dist to the root (Vite puts it in dist)
+    # 2. Ensure .htaccess is copied to the root
     - /bin/cp dist/.htaccess $DEPLOYPATH.htaccess
     
-    # 3. Log the deployment for troubleshooting
-    - echo "Deployment successful on $(date)" >> $DEPLOYPATH/deploy_history.txt
+    # 3. Log deployment status
+    - echo "Deployment completed at $(date)" >> $DEPLOYPATH/deploy_log.txt
