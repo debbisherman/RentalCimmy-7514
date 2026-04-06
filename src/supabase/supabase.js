@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
+// Project ID will be auto-injected during deployment
 const SUPABASE_URL = 'https://dhfkdovavtqnxcuwrygh.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRoZmtkb3ZhdnRxbnhjdXdyeWdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwNzEwNzYsImV4cCI6MjA5MDY0NzA3Nn0.b41Id6HTFaUfqXGp1kTy3Rgu5_YQorhd6v5hj0D7cIA'
 
@@ -11,6 +12,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    // Ensure the client doesn't expect email confirmation for flow logic
+    flowType: 'pkce' 
   }
 })
