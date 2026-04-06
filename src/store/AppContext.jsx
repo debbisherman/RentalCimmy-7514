@@ -120,6 +120,11 @@ export const AppProvider = ({ children }) => {
       fetchData(profile);
       return r;
     },
+    deletePayment: async (id) => {
+      const r = await supabase.from('payments_20240520').delete().eq('id', id);
+      fetchData(profile);
+      return r;
+    },
     signOut: () => supabase.auth.signOut(),
     refreshData: () => fetchData(profile)
   };
