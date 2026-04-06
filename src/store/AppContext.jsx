@@ -90,6 +90,8 @@ export const AppProvider = ({ children }) => {
     renters,
     payments,
     role: profile?.role || (user?.email === SUPER_ADMIN_EMAIL ? 'super_admin' : 'renter'),
+    
+    // Properties
     addProperty: async (d) => {
       const r = await supabase.from('properties_20240520').insert([{ ...d, landlord_id: user.id }]).select();
       fetchData(profile);
@@ -105,11 +107,25 @@ export const AppProvider = ({ children }) => {
       fetchData(profile);
       return r;
     },
+
+    // Renters
     addRenter: async (d) => {
       const r = await supabase.from('renters_20240520').insert([{ ...d, landlord_id: user.id }]).select();
       fetchData(profile);
       return r;
     },
+    updateRenter: async (id, d) => {
+      const r = await supabase.from('renters_20240520').update(d).eq('id', id).select();
+      fetchData(profile);
+      return r;
+    },
+    deleteRenter: async (id) => {
+      const r = await supabase.from('renters_20240520').delete().eq('id', id);
+      fetchData(profile);
+      return r;
+    },
+
+    // Payments
     addPayment: async (d) => {
       const r = await supabase.from('payments_20240520').insert([d]).select();
       fetchData(profile);
@@ -125,6 +141,7 @@ export const AppProvider = ({ children }) => {
       fetchData(profile);
       return r;
     },
+
     signOut: () => supabase.auth.signOut(),
     refreshData: () => fetchData(profile)
   };
