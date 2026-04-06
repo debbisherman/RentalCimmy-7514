@@ -12,8 +12,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    // Using 'implicit' flow can sometimes bypass strict PKCE verification checks 
-    // that trigger "unconfirmed" errors on certain redirect loops
-    flowType: 'implicit' 
+    // Switching to 'implicit' flow often resolves confirmation-lock issues in SPAs
+    flowType: 'implicit'
   }
 })
