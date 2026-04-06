@@ -3,20 +3,22 @@ import { useApp } from '../store/AppContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiPlus, FiMail, FiPhone, FiMapPin, FiSearch, FiEdit2, FiTrash2, FiHome, FiAlertCircle, FiUsers } = FiIcons;
+const { FiPlus, FiMail, FiPhone, FiMapPin, FiSearch, FiEdit2, FiTrash2, FiHome, FiAlertCircle, FiUsers, FiLock, FiCheckCircle } = FiIcons;
 
 const RentersManager = () => {
-  const { renters = [], properties = [], addRenter, updateRenter, deleteRenter, role } = useApp();
+  const { renters = [], properties = [], addRenter, updateRenter, deleteRenter, setRenterPassword, role } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRenter, setEditingRenter] = useState(null);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     address: '',
     phone: '',
     email: '',
+    password: '',
     co_tenants: '',
     additional_phones: '',
     property_id: ''
@@ -24,7 +26,6 @@ const RentersManager = () => {
 
   const isSuperAdmin = role === 'super_admin';
 
-  // Defensive filtering to prevent crashes on null/undefined names
   const filteredRenters = (renters || []).filter(r => {
     const nameMatch = (r.name || '').toLowerCase().includes(searchTerm.toLowerCase());
     const emailMatch = (r.email || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -35,6 +36,7 @@ const RentersManager = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccessMsg('');
 
     const payload = {
       name: formData.name.trim(),
@@ -47,17 +49,26 @@ const RentersManager = () => {
     };
 
     try {
+      // 1. Save Renter Profile Data
       const { error: apiError } = editingRenter 
         ? await updateRenter(editingRenter.id, payload) 
         : await addRenter(payload);
 
-      if (apiError) {
-        setError(apiError.message);
-      } else {
-        closeModal();
+      if (apiError) throw apiError;
+
+      // 2. If a password was provided, set it in Auth system
+      if (formData.password) {
+        const { data: pwdResult, error: pwdError } = await setRenterPassword(formData.email, formData.password);
+        if (pwdError) {
+          setError(`Profile saved, but password update failed: ${pwdError.message}`);
+          return;
+        }
       }
+
+      setSuccessMsg("Renter saved successfully!");
+      setTimeout(() => closeModal(), 1500);
     } catch (err) {
-      setError("An unexpected error occurred. Please try again.");
+      setError(err.message || "An unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -91,6 +102,7 @@ const RentersManager = () => {
       address: renter.address || '',
       phone: renter.phone || '',
       email: renter.email || '',
+      password: '', // Always empty initially for security
       co_tenants: renter.co_tenants || '',
       additional_phones: renter.additional_phones || '',
       property_id: renter.property_id || ''
@@ -102,7 +114,17 @@ const RentersManager = () => {
     setIsModalOpen(false);
     setEditingRenter(null);
     setError('');
-    setFormData({ name: '', address: '', phone: '', email: '', co_tenants: '', additional_phones: '', property_id: '' });
+    setSuccessMsg('');
+    setFormData({
+      name: '',
+      address: '',
+      phone: '',
+      email: '',
+      password: '',
+      co_tenants: '',
+      additional_phones: '',
+      property_id: ''
+    });
   };
 
   return (
@@ -110,7 +132,7 @@ const RentersManager = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-black text-gray-900">Tenants Directory</h2>
-          <p className="text-gray-500 font-medium">Active leaseholders and property assignments</p>
+          <p className="text-gray-500 font-medium">Active leaseholders and security management</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
@@ -172,13 +194,6 @@ const RentersManager = () => {
             </div>
           );
         })}
-
-        {filteredRenters.length === 0 && (
-          <div className="col-span-full py-20 text-center bg-white rounded-[32px] border border-dashed border-gray-200">
-            <SafeIcon icon={FiUsers} className="text-4xl text-gray-200 mx-auto mb-4" />
-            <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No tenants found</p>
-          </div>
-        )}
       </div>
 
       {isModalOpen && (
@@ -188,6 +203,7 @@ const RentersManager = () => {
               <h3 className="text-2xl font-black">{editingRenter ? 'Edit Profile' : 'Register Tenant'}</h3>
               <button onClick={closeModal} className="hover:rotate-90 transition-transform"><SafeIcon icon={FiPlus} className="rotate-45 text-3xl" /></button>
             </div>
+            
             <form onSubmit={handleSubmit} className="p-10 max-h-[70vh] overflow-y-auto space-y-6">
               {error && (
                 <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-xs font-bold border border-red-100 flex items-center gap-3">
@@ -195,32 +211,94 @@ const RentersManager = () => {
                   {error}
                 </div>
               )}
+
+              {successMsg && (
+                <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl text-xs font-bold border border-emerald-100 flex items-center gap-3">
+                  <SafeIcon icon={FiCheckCircle} className="text-lg shrink-0" />
+                  {successMsg}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Full Name</label>
-                  <input required className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="John Smith" />
+                  <input 
+                    required 
+                    className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    value={formData.name}
+                    onChange={e => setFormData({...formData, name: e.target.value})}
+                    placeholder="John Smith"
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Phone</label>
-                  <input required className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} placeholder="(555) 000-0000" />
+                  <input 
+                    required 
+                    className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    value={formData.phone}
+                    onChange={e => setFormData({...formData, phone: e.target.value})}
+                    placeholder="(555) 000-0000"
+                  />
                 </div>
               </div>
+
               <div>
                 <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Email Address</label>
-                <input required type="email" className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="tenant@example.com" />
+                <input 
+                  required 
+                  type="email"
+                  className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  value={formData.email}
+                  onChange={e => setFormData({...formData, email: e.target.value})}
+                  placeholder="tenant@example.com"
+                />
               </div>
+
+              <div className="p-6 bg-blue-50 rounded-3xl border border-blue-100">
+                <div className="flex items-center gap-2 mb-3">
+                   <SafeIcon icon={FiLock} className="text-blue-600" />
+                   <label className="block text-[10px] font-black text-blue-600 uppercase tracking-widest">Security Override</label>
+                </div>
+                <input 
+                  type="text"
+                  className="w-full bg-white border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  value={formData.password}
+                  onChange={e => setFormData({...formData, password: e.target.value})}
+                  placeholder={editingRenter ? "Leave blank to keep current" : "Set initial password"}
+                />
+                <p className="text-[9px] text-blue-400 font-bold mt-2 uppercase">Setting this will immediately update the renter's login credentials.</p>
+              </div>
+
               <div>
                 <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Assign Property</label>
-                <select className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none" value={formData.property_id} onChange={(e) => handlePropertyChange(e.target.value)}>
+                <select 
+                  className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none"
+                  value={formData.property_id}
+                  onChange={(e) => handlePropertyChange(e.target.value)}
+                >
                   <option value="">No Property (Manual Address)</option>
                   {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
+
               <div>
                 <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Property Address</label>
-                <textarea required rows="2" className={`w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all ${formData.property_id ? 'opacity-50 cursor-not-allowed' : ''}`} value={formData.address} onChange={e => !formData.property_id && setFormData({ ...formData, address: e.target.value })} readOnly={!!formData.property_id} placeholder="Enter full physical address..." />
+                <textarea 
+                  required
+                  rows="2"
+                  className={`w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all ${formData.property_id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  value={formData.address}
+                  onChange={e => !formData.property_id && setFormData({...formData, address: e.target.value})}
+                  readOnly={!!formData.property_id}
+                  placeholder="Enter full physical address..."
+                />
               </div>
-              <button disabled={loading} type="submit" className="w-full py-5 bg-blue-600 text-white rounded-[20px] font-black uppercase text-sm tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50">
+
+              <button 
+                disabled={loading}
+                type="submit" 
+                className="w-full py-5 bg-blue-600 text-white rounded-[20px] font-black uppercase text-sm tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50"
+              >
                 {loading ? 'Processing...' : editingRenter ? 'Update Renter' : 'Save Renter'}
               </button>
             </form>
