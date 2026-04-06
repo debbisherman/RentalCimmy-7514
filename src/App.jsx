@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import LandlordOverview from './pages/LandlordOverview';
 import RentersManager from './pages/RentersManager';
 import PaymentsManager from './pages/PaymentsManager';
+import PropertiesManager from './pages/PropertiesManager';
 import RenterDashboard from './pages/RenterDashboard';
 
 function App() {
@@ -55,6 +56,7 @@ function App() {
             {isAdmin ? (
               <>
                 <Route path="/" element={<LandlordOverview />} />
+                <Route path="/properties" element={<PropertiesManager />} />
                 <Route path="/renters" element={<RentersManager />} />
                 <Route path="/payments" element={<PaymentsManager />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

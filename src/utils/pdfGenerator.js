@@ -2,150 +2,128 @@ import { jsPDF } from "jspdf";
 import { format } from "date-fns";
 
 /**
- * Generates a professional PDF receipt for a single payment
+ * Generates a professional PDF receipt with property details
  */
-export const generateReceiptPDF = (payment, renter) => {
+export const generateReceiptPDF = (payment, renter, property) => {
   const doc = new jsPDF();
-  const primaryColor = '#1e3a8a'; // blue-900
-  const secondaryColor = '#475569'; // slate-600
-
+  
   // Header Background
-  doc.setFillColor(30, 58, 138);
+  doc.setFillColor(30, 58, 138); // blue-900
   doc.rect(0, 0, 210, 40, 'F');
 
   // Header Text
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(24);
-  doc.text("RENT RECEIPT", 105, 25, null, null, "center");
+  doc.text("OFFICIAL RECEIPT", 105, 25, null, null, "center");
 
   // Reset text color for body
   doc.setTextColor(30, 30, 30);
 
-  // Receipt Details Box
-  doc.setDrawColor(200, 200, 200);
-  doc.setFillColor(249, 250, 251);
-  doc.roundedRect(15, 50, 180, 40, 3, 3, 'FD');
-
+  // Property & Receipt Details
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.text("Receipt No:", 20, 60);
-  doc.text("Date:", 20, 70);
-  doc.text("Payment Method:", 20, 80);
-
+  doc.text("PROPERTY INFORMATION", 20, 55);
   doc.setFont("helvetica", "normal");
-  doc.text(`${payment.id.substring(0, 8).toUpperCase()}`, 60, 60);
-  doc.text(`${format(new Date(payment.date), 'MMMM dd, yyyy')}`, 60, 70);
-  doc.text(`Electronic Transfer`, 60, 80);
+  doc.text(property?.name || "N/A", 20, 62);
+  doc.text(property?.address || renter?.address || "N/A", 20, 67);
+
+  // Receipt Meta
+  doc.setFont("helvetica", "bold");
+  doc.text("RECEIPT DETAILS", 130, 55);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Receipt ID: ${payment.id.substring(0, 8).toUpperCase()}`, 130, 62);
+  doc.text(`Date Recorded: ${format(new Date(payment.date), 'MMM dd, yyyy')}`, 130, 67);
+  doc.text(`Date Received: ${format(new Date(payment.received_date || payment.date), 'MMM dd, yyyy')}`, 130, 72);
 
   // Amount Box
   doc.setFillColor(240, 253, 244);
   doc.setDrawColor(34, 197, 94);
-  doc.roundedRect(130, 55, 60, 30, 3, 3, 'FD');
-  doc.setFontSize(12);
-  doc.setTextColor(71, 85, 105);
-  doc.text("Amount Received", 160, 65, null, null, "center");
-  doc.setFontSize(20);
-  doc.setFont("helvetica", "bold");
+  doc.roundedRect(15, 85, 180, 25, 2, 2, 'FD');
+  doc.setFontSize(16);
   doc.setTextColor(21, 128, 61);
-  doc.text(`$${parseFloat(payment.amount).toFixed(2)}`, 160, 78, null, null, "center");
+  doc.text("TOTAL AMOUNT RECEIVED", 25, 101);
+  doc.setFontSize(22);
+  doc.text(`$${parseFloat(payment.amount).toFixed(2)}`, 185, 102, null, null, "right");
 
-  // Renter Info
+  // Tenant Info
   doc.setTextColor(30, 30, 30);
-  doc.setFontSize(14);
-  doc.text("Received From:", 20, 110);
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "normal");
-  doc.text(renter?.name || "Tenant", 20, 120);
-  doc.text(renter?.address || "Address Not Provided", 20, 127);
-
-  // Payment Details
-  doc.setFontSize(14);
+  doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
-  doc.text("Payment Details:", 20, 165);
-  doc.setFontSize(11);
+  doc.text("RECEIVED FROM:", 20, 125);
   doc.setFont("helvetica", "normal");
-  doc.text(`Category:`, 20, 175);
-  doc.text(payment.category || "Rent", 50, 175);
-  doc.text(`Note:`, 20, 182);
-  doc.text(payment.note || "Regular Payment", 50, 182);
+  doc.text(renter?.name || "Tenant", 20, 132);
+  if (renter?.co_tenants) {
+    doc.setFontSize(9);
+    doc.text(`Additional: ${renter.co_tenants}`, 20, 137);
+  }
+
+  // Payment Breakdown
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.text("PAYMENT DESCRIPTION:", 20, 155);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.text(`Category: ${payment.category || "Rent"}`, 20, 165);
+  doc.text(`Memo: ${payment.note || "Standard monthly payment"}`, 20, 172);
 
   // Footer
-  doc.setTextColor(100, 116, 139);
-  doc.setFontSize(10);
-  doc.text("This is an electronically generated receipt.", 105, 270, null, null, "center");
-  doc.text("PropTrack Property Management", 105, 275, null, null, "center");
+  doc.setTextColor(150, 150, 150);
+  doc.setFontSize(9);
+  doc.text("Thank you for your business.", 105, 270, null, null, "center");
+  doc.text("PropTrack Cloud Management System", 105, 275, null, null, "center");
 
-  doc.save(`Receipt-${payment.date}-${renter?.name?.replace(/\s+/g, '-')}.pdf`);
+  doc.save(`Receipt-${payment.id.substring(0,6)}.pdf`);
 };
 
 /**
- * Generates a full payment history statement for a renter
+ * Generates a statement for multiple months
  */
-export const generateStatementPDF = (payments, renter) => {
+export const generateStatementPDF = (payments, renter, property, startDate, endDate) => {
   const doc = new jsPDF();
   const total = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
-  // Header
   doc.setFillColor(30, 58, 138);
   doc.rect(0, 0, 210, 40, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
-  doc.text("PAYMENT STATEMENT", 105, 25, null, null, "center");
+  doc.text("ACCOUNT STATEMENT", 105, 25, null, null, "center");
 
-  // Renter Info
-  doc.setTextColor(30, 30, 30);
-  doc.setFontSize(12);
-  doc.text("Tenant Name:", 20, 55);
-  doc.text("Property:", 20, 62);
-  doc.text("Statement Date:", 20, 69);
-
-  doc.setFont("helvetica", "normal");
-  doc.text(renter?.name || "N/A", 60, 55);
-  doc.text(renter?.address || "N/A", 60, 62);
-  doc.text(format(new Date(), 'MMMM dd, yyyy'), 60, 69);
-
-  // Summary Table Header
-  doc.setFillColor(241, 245, 249);
-  doc.rect(15, 80, 180, 10, 'F');
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("DATE", 20, 86);
-  doc.text("CATEGORY", 60, 86);
-  doc.text("NOTE", 100, 86);
-  doc.text("AMOUNT", 185, 86, null, null, "right");
-
-  // Table Rows
-  let y = 97;
-  doc.setFont("helvetica", "normal");
+  doc.setTextColor(30,30,30);
+  doc.setFontSize(11);
+  doc.text(`Statement Period: ${startDate} to ${endDate}`, 20, 50);
   
-  payments.forEach((p, index) => {
-    if (y > 260) {
-      doc.addPage();
-      y = 20;
-    }
-    
-    // Alternate row colors
-    if (index % 2 === 0) {
-      doc.setFillColor(252, 253, 254);
-      doc.rect(15, y - 5, 180, 8, 'F');
-    }
+  doc.setFont("helvetica", "bold");
+  doc.text("Tenant:", 20, 60);
+  doc.text("Property:", 110, 60);
+  
+  doc.setFont("helvetica", "normal");
+  doc.text(renter?.name || "N/A", 40, 60);
+  doc.text(property?.name || "N/A", 130, 60);
 
+  // Table
+  doc.setFillColor(245, 245, 245);
+  doc.rect(15, 75, 180, 10, 'F');
+  doc.setFont("helvetica", "bold");
+  doc.text("DATE", 20, 82);
+  doc.text("CATEGORY", 60, 82);
+  doc.text("AMOUNT", 185, 82, null, null, "right");
+
+  let y = 95;
+  doc.setFont("helvetica", "normal");
+  payments.forEach(p => {
     doc.text(format(new Date(p.date), 'MM/dd/yyyy'), 20, y);
     doc.text(p.category || 'Rent', 60, y);
-    doc.text((p.note || '').substring(0, 35), 100, y);
     doc.text(`$${parseFloat(p.amount).toFixed(2)}`, 185, y, null, null, "right");
     y += 10;
   });
 
-  // Footer Total
-  doc.setDrawColor(200, 200, 200);
+  doc.setDrawColor(200);
   doc.line(15, y, 195, y);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text("TOTAL PAID TO DATE:", 120, y + 10);
-  doc.text(`$${total.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 185, y + 10, null, null, "right");
+  doc.text("TOTAL PAID:", 130, y + 10);
+  doc.text(`$${total.toLocaleString()}`, 185, y + 10, null, null, "right");
 
-  doc.save(`Statement-${renter?.name?.replace(/\s+/g, '-')}.pdf`);
+  doc.save(`Statement-${renter?.name?.replace(/\s/g,'-')}.pdf`);
 };

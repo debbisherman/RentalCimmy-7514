@@ -4,27 +4,25 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useApp } from '../store/AppContext';
 
-const { FiHome, FiUsers, FiDollarSign, FiLogOut } = FiIcons;
+const { FiHome, FiUsers, FiDollarSign, FiLogOut, FiLayout } = FiIcons;
 
 const Navigation = () => {
   const { role, signOut, profile, user } = useApp();
-
+  
   // Safety check: if email matches info@cimmeronstudios.com, force super_admin status locally
   const activeRole = user?.email === 'info@cimmeronstudios.com' ? 'super_admin' : role;
-  
   const isAdmin = activeRole === 'landlord' || activeRole === 'super_admin';
   const isSuperAdmin = activeRole === 'super_admin';
 
-  const navItems = isAdmin 
-    ? [
-        { path: '/', label: 'Overview', icon: FiHome },
-        { path: '/renters', label: 'Renters', icon: FiUsers },
-        { path: '/payments', label: 'Payments', icon: FiDollarSign },
-      ] 
-    : [
-        { path: '/', label: 'My Dashboard', icon: FiHome },
-        { path: '/my-payments', label: 'My Payments', icon: FiDollarSign },
-      ];
+  const navItems = isAdmin ? [
+    { path: '/', label: 'Overview', icon: FiHome },
+    { path: '/properties', label: 'Properties', icon: FiLayout },
+    { path: '/renters', label: 'Renters', icon: FiUsers },
+    { path: '/payments', label: 'Payments', icon: FiDollarSign },
+  ] : [
+    { path: '/', label: 'My Dashboard', icon: FiHome },
+    { path: '/my-payments', label: 'My Payments', icon: FiDollarSign },
+  ];
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 h-screen flex flex-col fixed left-0 top-0 z-50">
@@ -40,13 +38,13 @@ const Navigation = () => {
       <div className="flex-1 py-8 px-4 space-y-2 overflow-y-auto">
         <p className="px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Main Menu</p>
         {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
+          <NavLink 
+            key={item.path} 
+            to={item.path} 
+            className={({ isActive }) => 
               `flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-200 ${
-                isActive
-                  ? 'bg-blue-600 text-white font-bold shadow-lg shadow-blue-100'
+                isActive 
+                  ? 'bg-blue-600 text-white font-bold shadow-lg shadow-blue-100' 
                   : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-semibold'
               }`
             }
@@ -71,7 +69,7 @@ const Navigation = () => {
           <p className="text-[10px] text-blue-600 font-bold truncate mt-0.5">{user?.email}</p>
         </div>
 
-        <button
+        <button 
           onClick={signOut}
           className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-red-500 hover:bg-red-50 transition-all font-bold group"
         >
