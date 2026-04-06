@@ -9,8 +9,6 @@ export const useApp = () => {
   return context;
 };
 
-const SUPER_ADMIN_EMAIL = 'info@cimmeronstudios.com';
-
 export const AppProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -47,9 +45,15 @@ export const AppProvider = ({ children }) => {
 
   const fetchProfile = async (userId, userEmail) => {
     try {
-      const { data, error } = await supabase.from('profiles_20240520').select('*').eq('id', userId).maybeSingle();
-      let finalProfile = data || { id: userId, email: userEmail, role: userEmail === SUPER_ADMIN_EMAIL ? 'super_admin' : 'renter', full_name: 'User' };
-      if (userEmail === SUPER_ADMIN_EMAIL) finalProfile.role = 'super_admin';
+      const { data, error } = await supabase
+        .from('profiles_20240520')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      // Default to renter if no profile exists yet (trigger will handle it usually)
+      let finalProfile = data || { id: userId, email: userEmail, role: 'renter', full_name: 'User' };
+      
       setProfile(finalProfile);
       await fetchData(finalProfile);
     } catch (err) {
@@ -62,6 +66,7 @@ export const AppProvider = ({ children }) => {
   const fetchData = async (userProfile) => {
     if (!userProfile) return;
     const isAdmin = userProfile.role === 'landlord' || userProfile.role === 'super_admin';
+    
     try {
       if (isAdmin) {
         const [propRes, rentRes, payRes] = await Promise.all([
@@ -73,7 +78,12 @@ export const AppProvider = ({ children }) => {
         setRenters(rentRes.data || []);
         setPayments(payRes.data || []);
       } else {
-        const { data: renterRecord } = await supabase.from('renters_20240520').select('*').eq('email', userProfile.email).maybeSingle();
+        const { data: renterRecord } = await supabase
+          .from('renters_20240520')
+          .select('*')
+          .eq('email', userProfile.email)
+          .maybeSingle();
+
         if (renterRecord) {
           const [propRes, payRes] = await Promise.all([
             supabase.from('properties_20240520').select('*'),
@@ -100,7 +110,7 @@ export const AppProvider = ({ children }) => {
     properties,
     renters,
     payments,
-    role: profile?.role || (user?.email === SUPER_ADMIN_EMAIL ? 'super_admin' : 'renter'),
+    role: profile?.role || 'renter',
     addProperty: async (d) => {
       const r = await supabase.from('properties_20240520').insert([{ ...d, landlord_id: user.id }]).select();
       fetchData(profile);
@@ -130,9 +140,6 @@ export const AppProvider = ({ children }) => {
       const r = await supabase.from('renters_20240520').delete().eq('id', id);
       fetchData(profile);
       return r;
-    },
-    setRenterPassword: async (email, password) => {
-      return await supabase.rpc('admin_set_user_password', { target_email: email, new_password: password });
     },
     addPayment: async (d) => {
       const r = await supabase.from('payments_20240520').insert([d]).select();
