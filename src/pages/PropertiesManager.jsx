@@ -3,17 +3,17 @@ import { useApp } from '../store/AppContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiPlus, FiMapPin, FiHome, FiSearch, FiEdit2, FiTrash2 } = FiIcons;
+const { FiPlus, FiMapPin, FiHome, FiSearch, FiEdit2, FiTrash2, FiAlertCircle } = FiIcons;
 
 const PropertiesManager = () => {
-  const { properties, addProperty, renters } = useApp();
+  const { properties, addProperty, updateProperty, deleteProperty, renters, role } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProperty, setEditingProperty] = useState(null);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState({
-    name: '',
-    address: ''
-  });
+  const [formData, setFormData] = useState({ name: '', address: '' });
+
+  const isSuperAdmin = role === 'super_admin';
 
   const filteredProperties = properties.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -24,14 +24,42 @@ const PropertiesManager = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await addProperty(formData);
-      setIsModalOpen(false);
-      setFormData({ name: '', address: '' });
+      if (editingProperty) {
+        await updateProperty(editingProperty.id, formData);
+      } else {
+        await addProperty(formData);
+      }
+      closeModal();
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this property? This action cannot be undone.')) {
+      setLoading(true);
+      try {
+        await deleteProperty(id);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const openEdit = (property) => {
+    setEditingProperty(property);
+    setFormData({ name: property.name, address: property.address });
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingProperty(null);
+    setFormData({ name: '', address: '' });
   };
 
   return (
@@ -74,11 +102,11 @@ const PropertiesManager = () => {
                 <SafeIcon icon={FiHome} />
               </div>
 
-              <h3 className="text-xl font-black text-gray-900 mb-2">{property.name}</h3>
+              <h3 className="text-xl font-black text-gray-900 mb-2 truncate pr-10">{property.name}</h3>
               
-              <div className="flex items-start gap-3 text-sm font-bold text-gray-500 mb-6">
+              <div className="flex items-start gap-3 text-sm font-bold text-gray-500 mb-6 h-10 overflow-hidden">
                 <SafeIcon icon={FiMapPin} className="mt-1 text-blue-600 shrink-0" />
-                <span>{property.address}</span>
+                <span className="line-clamp-2">{property.address}</span>
               </div>
 
               <div className="pt-6 border-t border-gray-50 flex items-center justify-between">
@@ -86,11 +114,25 @@ const PropertiesManager = () => {
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Active Tenants</p>
                   <p className="text-sm font-black text-gray-900">{tenantCount} Profiles</p>
                 </div>
-                <div className="flex gap-2">
-                  <button className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
-                    <SafeIcon icon={FiEdit2} />
-                  </button>
-                </div>
+                
+                {(isSuperAdmin || property.landlord_id === useApp().user?.id) && (
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => openEdit(property)}
+                      className="p-2.5 text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                      title="Edit Property"
+                    >
+                      <SafeIcon icon={FiEdit2} />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(property.id)}
+                      className="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                      title="Delete Property"
+                    >
+                      <SafeIcon icon={FiTrash2} />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -109,12 +151,14 @@ const PropertiesManager = () => {
           <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
             <div className="p-10 bg-blue-600 text-white">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-2xl font-black">Register Property</h3>
-                <button onClick={() => setIsModalOpen(false)} className="text-white/80 hover:text-white transition-colors">
+                <h3 className="text-2xl font-black">{editingProperty ? 'Edit Property' : 'Register Property'}</h3>
+                <button onClick={closeModal} className="text-white/80 hover:text-white transition-colors">
                   <SafeIcon icon={FiPlus} className="rotate-45 text-3xl" />
                 </button>
               </div>
-              <p className="text-blue-100 font-medium">Record a new asset in your portfolio</p>
+              <p className="text-blue-100 font-medium">
+                {editingProperty ? 'Modify existing asset details' : 'Record a new asset in your portfolio'}
+              </p>
             </div>
             
             <form onSubmit={handleSubmit} className="p-10 space-y-6">
@@ -153,7 +197,7 @@ const PropertiesManager = () => {
                   type="submit" 
                   className="w-full py-5 bg-blue-600 text-white rounded-[20px] font-black uppercase text-sm tracking-[0.2em] shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50"
                 >
-                  {loading ? 'Creating Asset...' : 'Save Property'}
+                  {loading ? 'Processing...' : editingProperty ? 'Update Asset' : 'Save Property'}
                 </button>
               </div>
             </form>

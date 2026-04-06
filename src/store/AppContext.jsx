@@ -26,6 +26,7 @@ export const AppProvider = ({ children }) => {
       if (session?.user) await fetchProfile(session.user.id, session.user.email);
       else setLoading(false);
     };
+
     initSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -47,6 +48,7 @@ export const AppProvider = ({ children }) => {
   const fetchProfile = async (userId, userEmail) => {
     const { data } = await supabase.from('profiles_20240520').select('*').eq('id', userId).maybeSingle();
     let finalProfile = data || { id: userId, email: userEmail, role: 'renter', full_name: 'User' };
+    
     if (userEmail === SUPER_ADMIN_EMAIL) finalProfile.role = 'super_admin';
     setProfile(finalProfile);
     await fetchData(finalProfile);
@@ -56,7 +58,7 @@ export const AppProvider = ({ children }) => {
   const fetchData = async (userProfile) => {
     if (!userProfile) return;
     const isAdmin = userProfile.role === 'landlord' || userProfile.role === 'super_admin';
-    
+
     if (isAdmin) {
       const [propRes, rentRes, payRes] = await Promise.all([
         supabase.from('properties_20240520').select('*').order('name'),
@@ -81,23 +83,42 @@ export const AppProvider = ({ children }) => {
   };
 
   const value = {
-    user, profile, loading, properties, renters, payments,
+    user,
+    profile,
+    loading,
+    properties,
+    renters,
+    payments,
     role: profile?.role || (user?.email === SUPER_ADMIN_EMAIL ? 'super_admin' : 'renter'),
     addProperty: async (d) => {
       const r = await supabase.from('properties_20240520').insert([{ ...d, landlord_id: user.id }]).select();
-      fetchData(profile); return r;
+      fetchData(profile);
+      return r;
+    },
+    updateProperty: async (id, d) => {
+      const r = await supabase.from('properties_20240520').update(d).eq('id', id).select();
+      fetchData(profile);
+      return r;
+    },
+    deleteProperty: async (id) => {
+      const r = await supabase.from('properties_20240520').delete().eq('id', id);
+      fetchData(profile);
+      return r;
     },
     addRenter: async (d) => {
       const r = await supabase.from('renters_20240520').insert([{ ...d, landlord_id: user.id }]).select();
-      fetchData(profile); return r;
+      fetchData(profile);
+      return r;
     },
     addPayment: async (d) => {
       const r = await supabase.from('payments_20240520').insert([d]).select();
-      fetchData(profile); return r;
+      fetchData(profile);
+      return r;
     },
     updatePayment: async (id, d) => {
       const r = await supabase.from('payments_20240520').update(d).eq('id', id).select();
-      fetchData(profile); return r;
+      fetchData(profile);
+      return r;
     },
     signOut: () => supabase.auth.signOut(),
     refreshData: () => fetchData(profile)
