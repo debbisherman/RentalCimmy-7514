@@ -24,8 +24,6 @@ const RentersManager = () => {
     property_id: ''
   });
 
-  const isSuperAdmin = role === 'super_admin';
-
   const filteredRenters = (renters || []).filter(r => {
     const nameMatch = (r.name || '').toLowerCase().includes(searchTerm.toLowerCase());
     const emailMatch = (r.email || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -56,16 +54,20 @@ const RentersManager = () => {
 
       if (apiError) throw apiError;
 
-      // 2. If a password was provided, set it in Auth system
+      // 2. Handle Password Update
       if (formData.password) {
-        const { data: pwdResult, error: pwdError } = await setRenterPassword(formData.email, formData.password);
-        if (pwdError) {
-          setError(`Profile saved, but password update failed: ${pwdError.message}`);
-          return;
+        const { data: resultString, error: pwdError } = await setRenterPassword(formData.email, formData.password);
+        
+        if (pwdError) throw pwdError;
+
+        if (resultString.startsWith('ERROR:')) {
+          setError(resultString.replace('ERROR:', ''));
+          setLoading(false);
+          return; // Stop here, show the specific "No account found" error
         }
       }
 
-      setSuccessMsg("Renter saved successfully!");
+      setSuccessMsg("Renter record and password updated!");
       setTimeout(() => closeModal(), 1500);
     } catch (err) {
       setError(err.message || "An unexpected error occurred.");
@@ -102,7 +104,7 @@ const RentersManager = () => {
       address: renter.address || '',
       phone: renter.phone || '',
       email: renter.email || '',
-      password: '', // Always empty initially for security
+      password: '',
       co_tenants: renter.co_tenants || '',
       additional_phones: renter.additional_phones || '',
       property_id: renter.property_id || ''
@@ -264,9 +266,9 @@ const RentersManager = () => {
                   className="w-full bg-white border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   value={formData.password}
                   onChange={e => setFormData({...formData, password: e.target.value})}
-                  placeholder={editingRenter ? "Leave blank to keep current" : "Set initial password"}
+                  placeholder={editingRenter ? "Type new password here" : "Set initial password"}
                 />
-                <p className="text-[9px] text-blue-400 font-bold mt-2 uppercase">Setting this will immediately update the renter's login credentials.</p>
+                <p className="text-[9px] text-blue-400 font-bold mt-2 uppercase">Setting this will immediately update the renter's login credentials if they have an active account.</p>
               </div>
 
               <div>

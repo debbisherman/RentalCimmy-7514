@@ -4,7 +4,7 @@ import { generateReceiptPDF } from '../utils/pdfGenerator';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiDownload, FiPlus, FiDollarSign, FiTag, FiEdit2, FiTrash2, FiHome, FiCalendar, FiAlertCircle } = FiIcons;
+const { FiDownload, FiPlus, FiDollarSign, FiTag, FiEdit2, FiTrash2, FiHome, FiCalendar, FiAlertCircle, FiEdit3 } = FiIcons;
 
 const CATEGORIES = ['Rent', 'Security Deposit', 'Utilities', 'Maintenance Fee', 'Late Fee', 'Parking', 'Other'];
 
@@ -24,20 +24,18 @@ const PaymentsManager = () => {
     note: ''
   });
 
-  const isSuperAdmin = role === 'super_admin';
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    // CRITICAL: property_id must be null, not an empty string, for UUID columns
     const payload = {
       ...formData,
       amount: parseFloat(formData.amount),
-      property_id: formData.property_id || null, 
+      property_id: formData.property_id || null,
       renter_id: formData.renter_id,
-      status: 'Paid'
+      status: 'Paid',
+      note: formData.note.trim()
     };
 
     try {
@@ -51,14 +49,14 @@ const PaymentsManager = () => {
         closeModal();
       }
     } catch (err) {
-      setError("An unexpected error occurred. Please check your connection.");
+      setError("An unexpected error occurred.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Delete this payment record? This cannot be undone.')) {
+    if (window.confirm('Delete this payment record?')) {
       setLoading(true);
       await deletePayment(id);
       setLoading(false);
@@ -122,7 +120,7 @@ const PaymentsManager = () => {
               <tr>
                 <th className="px-8 py-6">Timeline</th>
                 <th className="px-8 py-6">Tenant & Asset</th>
-                <th className="px-8 py-6">Category</th>
+                <th className="px-8 py-6">Category & Memo</th>
                 <th className="px-8 py-6">Amount</th>
                 <th className="px-8 py-6 text-right">Actions</th>
               </tr>
@@ -144,9 +142,14 @@ const PaymentsManager = () => {
                       </div>
                     </td>
                     <td className="px-8 py-6">
-                      <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                      <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-black uppercase tracking-wider block w-fit mb-1">
                         {p.category}
                       </span>
+                      {p.note && (
+                        <p className="text-[10px] text-gray-400 font-medium italic line-clamp-1 max-w-[150px]">
+                          "{p.note}"
+                        </p>
+                      )}
                     </td>
                     <td className="px-8 py-6">
                       <div className="text-lg font-black text-gray-900">${parseFloat(p.amount).toFixed(2)}</div>
@@ -167,13 +170,6 @@ const PaymentsManager = () => {
                   </tr>
                 );
               })}
-              {payments.length === 0 && (
-                <tr>
-                  <td colSpan="5" className="px-8 py-20 text-center text-gray-400 font-bold uppercase tracking-widest text-xs italic">
-                    No payment records in ledger
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
@@ -186,50 +182,109 @@ const PaymentsManager = () => {
               <h3 className="text-2xl font-black">{editingPayment ? 'Edit Ledger' : 'New Payment'}</h3>
               <button onClick={closeModal}><SafeIcon icon={FiPlus} className="rotate-45 text-3xl" /></button>
             </div>
-            <form onSubmit={handleSubmit} className="p-10 space-y-6">
+            
+            <form onSubmit={handleSubmit} className="p-10 max-h-[70vh] overflow-y-auto space-y-6">
               {error && (
                 <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-xs font-bold border border-red-100 flex items-center gap-3">
                   <SafeIcon icon={FiAlertCircle} className="text-lg shrink-0" />
                   {error}
                 </div>
               )}
+
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Tenant</label>
-                  <select required className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none" value={formData.renter_id} onChange={e => setFormData({ ...formData, renter_id: e.target.value })}>
+                  <select 
+                    required 
+                    className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none"
+                    value={formData.renter_id}
+                    onChange={e => setFormData({...formData, renter_id: e.target.value})}
+                  >
                     <option value="">Select...</option>
                     {renters.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Property</label>
-                  <select required className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none" value={formData.property_id} onChange={e => setFormData({ ...formData, property_id: e.target.value })}>
+                  <select 
+                    required 
+                    className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none"
+                    value={formData.property_id}
+                    onChange={e => setFormData({...formData, property_id: e.target.value})}
+                  >
                     <option value="">Select...</option>
                     {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Due Date</label>
-                  <input required type="date" className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
+                  <input 
+                    required 
+                    type="date" 
+                    className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    value={formData.date}
+                    onChange={e => setFormData({...formData, date: e.target.value})}
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Received Date</label>
-                  <input required type="date" className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all" value={formData.received_date} onChange={e => setFormData({ ...formData, received_date: e.target.value })} />
+                  <input 
+                    required 
+                    type="date" 
+                    className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    value={formData.received_date}
+                    onChange={e => setFormData({...formData, received_date: e.target.value})}
+                  />
                 </div>
               </div>
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Amount ($)</label>
-                <input required type="number" step="0.01" className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-5 font-black text-2xl text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} placeholder="0.00" />
+
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Amount ($)</label>
+                  <input 
+                    required 
+                    type="number" 
+                    step="0.01"
+                    className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-black text-xl text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    value={formData.amount}
+                    onChange={e => setFormData({...formData, amount: e.target.value})}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Category</label>
+                  <select 
+                    className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none"
+                    value={formData.category}
+                    onChange={e => setFormData({...formData, category: e.target.value})}
+                  >
+                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
               </div>
+
               <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Category</label>
-                <select className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest flex items-center gap-2">
+                  <SafeIcon icon={FiEdit3} className="text-blue-600" />
+                  Memo / Note
+                </label>
+                <textarea 
+                  rows="2"
+                  className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
+                  value={formData.note}
+                  onChange={e => setFormData({...formData, note: e.target.value})}
+                  placeholder="e.g. Paid via Zelle, Check #402, or partial utilities..."
+                />
               </div>
-              <button disabled={loading} type="submit" className="w-full py-5 bg-blue-600 text-white rounded-[20px] font-black uppercase text-sm tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50">
+
+              <button 
+                disabled={loading}
+                type="submit" 
+                className="w-full py-5 bg-blue-600 text-white rounded-[20px] font-black uppercase text-sm tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50"
+              >
                 {loading ? 'Processing...' : editingPayment ? 'Update Ledger' : 'Save Payment'}
               </button>
             </form>
