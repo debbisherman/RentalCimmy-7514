@@ -23,9 +23,7 @@ const RentersManager = () => {
     property_id: ''
   });
 
-  const isSuperAdmin = role === 'super_admin';
-
-  const filteredRenters = renters.filter(r => 
+  const filteredRenters = (renters || []).filter(r => 
     r.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     r.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -35,27 +33,40 @@ const RentersManager = () => {
     setLoading(true);
     setError('');
     
-    let finalData = { ...formData };
-    
-    // Safety check: Address is mandatory in DB
-    if (!finalData.address && !finalData.property_id) {
-      setError("Please provide an address or assign a property.");
+    // Construct payload carefully
+    const payload = {
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      phone: formData.phone.trim(),
+      address: formData.address.trim(),
+      co_tenants: formData.co_tenants.trim() || '',
+      additional_phones: formData.additional_phones.trim() || '',
+      property_id: formData.property_id || null
+    };
+
+    if (!payload.address) {
+      setError("Property address is required.");
       setLoading(false);
       return;
     }
 
     try {
-      const response = editingRenter 
-        ? await updateRenter(editingRenter.id, finalData)
-        : await addRenter(finalData);
+      const { error: apiError } = editingRenter 
+        ? await updateRenter(editingRenter.id, payload)
+        : await addRenter(payload);
 
-      if (response?.error) {
-        setError(response.error.message);
+      if (apiError) {
+        // Handle the specific PostgREST schema cache error
+        if (apiError.message?.includes('additional_phones')) {
+          setError("Database schema sync error. Please refresh the page or wait a moment for the database to update.");
+        } else {
+          setError(apiError.message);
+        }
       } else {
         closeModal();
       }
     } catch (err) {
-      setError("A critical error occurred. Please try again.");
+      setError("Failed to save renter. Please check your connection.");
     } finally {
       setLoading(false);
     }
@@ -86,10 +97,10 @@ const RentersManager = () => {
   const openEdit = (renter) => {
     setEditingRenter(renter);
     setFormData({
-      name: renter.name,
-      address: renter.address,
+      name: renter.name || '',
+      address: renter.address || '',
       phone: renter.phone || '',
-      email: renter.email,
+      email: renter.email || '',
       co_tenants: renter.co_tenants || '',
       additional_phones: renter.additional_phones || '',
       property_id: renter.property_id || ''
@@ -112,9 +123,9 @@ const RentersManager = () => {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-black text-gray-900">Tenants Directory</h2>
-          <p className="text-gray-500 font-medium">Manage leaseholders and property assignments</p>
+          <p className="text-gray-500 font-medium tracking-tight">Active leaseholders and property assignments</p>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all">
+        <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95">
           <SafeIcon icon={FiPlus} /> Add Renter
         </button>
       </div>
@@ -141,14 +152,14 @@ const RentersManager = () => {
                 </button>
                 <button 
                   onClick={() => handleDelete(renter)} 
-                  className={`p-2 rounded-xl transition-all ${renter.property_id ? 'text-gray-300 cursor-not-allowed' : 'text-red-500 hover:bg-red-50'}`}
+                  className={`p-2 rounded-xl transition-all ${renter.property_id ? 'text-gray-200 cursor-not-allowed' : 'text-red-500 hover:bg-red-50'}`}
                 >
                   <SafeIcon icon={FiTrash2} />
                 </button>
               </div>
 
               <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-2xl font-black mb-6 shadow-lg shadow-blue-100">
-                {renter.name?.charAt(0)}
+                {renter.name?.charAt(0).toUpperCase()}
               </div>
 
               <h3 className="text-xl font-black text-gray-900 mb-4 truncate pr-16">{renter.name}</h3>
@@ -163,15 +174,24 @@ const RentersManager = () => {
                   <span className="truncate">{renter.email}</span>
                 </div>
                 <div className="pt-4 border-t border-gray-50">
-                  <div className={`px-4 py-3 rounded-2xl flex items-center gap-3 ${property ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+                  <div className={`px-4 py-3 rounded-2xl flex items-center gap-3 ${property ? 'bg-emerald-50 border border-emerald-100' : 'bg-amber-50 border border-amber-100'}`}>
                     <SafeIcon icon={FiHome} className={property ? 'text-emerald-600' : 'text-amber-600'} />
-                    <p className="text-[10px] font-black uppercase text-gray-500">{property ? property.name : 'Unassigned'}</p>
+                    <p className={`text-[10px] font-black uppercase tracking-wider ${property ? 'text-emerald-700' : 'text-amber-700'}`}>
+                      {property ? property.name : 'Unassigned'}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           );
         })}
+        
+        {filteredRenters.length === 0 && (
+          <div className="col-span-full py-20 text-center bg-white rounded-[32px] border border-dashed border-gray-200">
+            <SafeIcon icon={FiUsers} className="text-4xl text-gray-200 mx-auto mb-4" />
+            <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No tenants found</p>
+          </div>
+        )}
       </div>
 
       {isModalOpen && (
@@ -179,34 +199,39 @@ const RentersManager = () => {
           <div className="bg-white rounded-[40px] w-full max-w-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
             <div className="p-10 bg-blue-600 text-white flex justify-between items-center">
               <h3 className="text-2xl font-black">{editingRenter ? 'Edit Profile' : 'Register Tenant'}</h3>
-              <button onClick={closeModal}><SafeIcon icon={FiPlus} className="rotate-45 text-3xl" /></button>
+              <button onClick={closeModal} className="hover:rotate-90 transition-transform"><SafeIcon icon={FiPlus} className="rotate-45 text-3xl" /></button>
             </div>
             
             <form onSubmit={handleSubmit} className="p-10 max-h-[70vh] overflow-y-auto space-y-6">
-              {error && <div className="p-4 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-100">{error}</div>}
+              {error && (
+                <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-xs font-bold border border-red-100 flex items-center gap-3">
+                  <SafeIcon icon={FiAlertCircle} className="text-lg shrink-0" />
+                  {error}
+                </div>
+              )}
               
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Full Name</label>
-                  <input required className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                  <input required className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="John Smith" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Phone</label>
-                  <input required className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                  <input required className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="(555) 000-0000" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Email</label>
-                <input required type="email" className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Email Address</label>
+                <input required type="email" className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="tenant@example.com" />
               </div>
 
               <div>
                 <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Assign Property</label>
                 <select 
-                  className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold" 
+                  className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none" 
                   value={formData.property_id} 
-                  onChange={e => handlePropertyChange(e.target.value)}
+                  onChange={(e) => handlePropertyChange(e.target.value)}
                 >
                   <option value="">No Property (Manual Address)</option>
                   {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -214,30 +239,31 @@ const RentersManager = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Current Address</label>
+                <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Property Address</label>
                 <textarea 
                   required 
                   rows="2" 
-                  className={`w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold ${formData.property_id ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                  className={`w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all ${formData.property_id ? 'opacity-50 cursor-not-allowed' : ''}`} 
                   value={formData.address} 
                   onChange={e => !formData.property_id && setFormData({...formData, address: e.target.value})}
                   readOnly={!!formData.property_id}
+                  placeholder="Enter full physical address..."
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Co-Tenants</label>
-                  <input className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold" value={formData.co_tenants} onChange={e => setFormData({...formData, co_tenants: e.target.value})} />
+                  <input className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all" value={formData.co_tenants} onChange={e => setFormData({...formData, co_tenants: e.target.value})} placeholder="Spouse, Children..." />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Emergency Contacts</label>
-                  <input className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold" value={formData.additional_phones} onChange={e => setFormData({...formData, additional_phones: e.target.value})} />
+                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Other Contact Info</label>
+                  <input className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all" value={formData.additional_phones} onChange={e => setFormData({...formData, additional_phones: e.target.value})} placeholder="Emergency Contact..." />
                 </div>
               </div>
 
-              <button disabled={loading} type="submit" className="w-full py-5 bg-blue-600 text-white rounded-[20px] font-black uppercase text-sm tracking-widest shadow-xl disabled:opacity-50">
-                {loading ? 'Saving...' : 'Save Renter'}
+              <button disabled={loading} type="submit" className="w-full py-5 bg-blue-600 text-white rounded-[20px] font-black uppercase text-sm tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50">
+                {loading ? 'Processing...' : editingRenter ? 'Update Renter' : 'Save Renter'}
               </button>
             </form>
           </div>
