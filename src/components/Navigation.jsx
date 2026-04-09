@@ -4,23 +4,27 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useApp } from '../store/AppContext';
 
-const { FiHome, FiUsers, FiDollarSign, FiLogOut, FiLayout } = FiIcons;
+const { FiHome, FiUsers, FiDollarSign, FiLogOut } = FiIcons;
 
 const Navigation = () => {
   const { role, signOut, profile, user } = useApp();
-  
-  const isAdmin = role === 'landlord' || role === 'super_admin';
-  const isSuperAdmin = role === 'super_admin';
 
-  const navItems = isAdmin ? [
-    { path: '/', label: 'Overview', icon: FiHome },
-    { path: '/properties', label: 'Properties', icon: FiLayout },
-    { path: '/renters', label: 'Renters', icon: FiUsers },
-    { path: '/payments', label: 'Payments', icon: FiDollarSign },
-  ] : [
-    { path: '/', label: 'My Dashboard', icon: FiHome },
-    { path: '/my-payments', label: 'My Payments', icon: FiDollarSign },
-  ];
+  // Safety check: if email matches info@cimmeronstudios.com, force super_admin status locally
+  const activeRole = user?.email === 'info@cimmeronstudios.com' ? 'super_admin' : role;
+  
+  const isAdmin = activeRole === 'landlord' || activeRole === 'super_admin';
+  const isSuperAdmin = activeRole === 'super_admin';
+
+  const navItems = isAdmin 
+    ? [
+        { path: '/', label: 'Overview', icon: FiHome },
+        { path: '/renters', label: 'Renters', icon: FiUsers },
+        { path: '/payments', label: 'Payments', icon: FiDollarSign },
+      ] 
+    : [
+        { path: '/', label: 'My Dashboard', icon: FiHome },
+        { path: '/my-payments', label: 'My Payments', icon: FiDollarSign },
+      ];
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 h-screen flex flex-col fixed left-0 top-0 z-50">
@@ -35,7 +39,6 @@ const Navigation = () => {
 
       <div className="flex-1 py-8 px-4 space-y-2 overflow-y-auto">
         <p className="px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Main Menu</p>
-        
         {navItems.map((item) => (
           <NavLink
             key={item.path}
@@ -61,11 +64,6 @@ const Navigation = () => {
             {isSuperAdmin && (
               <span className="bg-purple-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">
                 Super Admin
-              </span>
-            )}
-            {role === 'landlord' && (
-              <span className="bg-blue-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">
-                Landlord
               </span>
             )}
           </div>

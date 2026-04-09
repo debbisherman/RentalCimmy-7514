@@ -4,21 +4,20 @@ import { generateReceiptPDF } from '../utils/pdfGenerator';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const { FiDownload, FiPlus, FiDollarSign, FiTag, FiEdit2, FiTrash2, FiHome, FiCalendar, FiAlertCircle, FiEdit3 } = FiIcons;
+const { FiDownload, FiPlus, FiTag, FiAlertCircle } = FiIcons;
 
-const CATEGORIES = ['Rent', 'Security Deposit', 'Utilities', 'Maintenance Fee', 'Late Fee', 'Parking', 'Other'];
+const CATEGORIES = [
+  'Rent', 'Security Deposit', 'Utilities', 'Maintenance Fee', 'Late Fee', 'Parking', 'Other'
+];
 
 const PaymentsManager = () => {
-  const { payments = [], renters = [], properties = [], addPayment, updatePayment, deletePayment, role } = useApp();
+  const { payments, renters, addPayment } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingPayment, setEditingPayment] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     renter_id: '',
-    property_id: '',
     amount: '',
-    date: new Date().toISOString().split('T')[0],
     received_date: new Date().toISOString().split('T')[0],
     category: 'Rent',
     note: ''
@@ -27,145 +26,101 @@ const PaymentsManager = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-
-    const payload = {
-      ...formData,
-      amount: parseFloat(formData.amount),
-      property_id: formData.property_id || null,
-      renter_id: formData.renter_id,
-      status: 'Paid',
-      note: formData.note.trim()
-    };
-
+    setError(null);
+    
     try {
-      const { error: apiError } = editingPayment 
-        ? await updatePayment(editingPayment.id, payload) 
-        : await addPayment(payload);
+      const { error: submitError } = await addPayment({
+        ...formData,
+        amount: parseFloat(formData.amount),
+        status: 'Paid',
+        // Support both schema variations
+        date: formData.received_date 
+      });
 
-      if (apiError) {
-        setError(apiError.message);
+      if (submitError) {
+        setError(submitError.message);
       } else {
-        closeModal();
+        setIsModalOpen(false);
+        setFormData({
+          renter_id: '',
+          amount: '',
+          received_date: new Date().toISOString().split('T')[0],
+          category: 'Rent',
+          note: ''
+        });
       }
     } catch (err) {
-      setError("An unexpected error occurred.");
+      setError("An unexpected error occurred while saving.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Delete this payment record?')) {
-      setLoading(true);
-      await deletePayment(id);
-      setLoading(false);
-    }
-  };
-
-  const openEdit = (payment) => {
-    setEditingPayment(payment);
-    setFormData({
-      renter_id: payment.renter_id || '',
-      property_id: payment.property_id || '',
-      amount: payment.amount.toString(),
-      date: payment.date,
-      received_date: payment.received_date || payment.date,
-      category: payment.category || 'Rent',
-      note: payment.note || ''
-    });
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setEditingPayment(null);
-    setError('');
-    setFormData({
-      renter_id: '',
-      property_id: '',
-      amount: '',
-      date: new Date().toISOString().split('T')[0],
-      received_date: new Date().toISOString().split('T')[0],
-      category: 'Rent',
-      note: ''
-    });
-  };
-
   const handleDownload = (payment) => {
     const renter = renters.find(r => r.id === payment.renter_id);
-    const property = properties.find(p => p.id === payment.property_id);
-    generateReceiptPDF(payment, renter, property);
+    generateReceiptPDF(payment, renter);
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-black text-gray-900">Financial Ledger</h2>
-          <p className="text-gray-500 font-medium tracking-tight">Real-time revenue tracking and receipts</p>
+          <h2 className="text-2xl font-bold text-gray-800">Payments Ledger</h2>
+          <p className="text-gray-500 text-sm">Record and track all incoming payments</p>
         </div>
         <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95"
+          onClick={() => {
+            setError(null);
+            setIsModalOpen(true);
+          }} 
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-sm"
         >
           <SafeIcon icon={FiPlus} /> Record Payment
         </button>
       </div>
 
-      <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50/50 text-gray-400 font-black uppercase tracking-widest text-[10px]">
+            <thead className="bg-gray-50 text-gray-600 border-b border-gray-200">
               <tr>
-                <th className="px-8 py-6">Timeline</th>
-                <th className="px-8 py-6">Tenant & Asset</th>
-                <th className="px-8 py-6">Category & Memo</th>
-                <th className="px-8 py-6">Amount</th>
-                <th className="px-8 py-6 text-right">Actions</th>
+                <th className="px-6 py-4 font-semibold uppercase tracking-wider">Date</th>
+                <th className="px-6 py-4 font-semibold uppercase tracking-wider">Renter</th>
+                <th className="px-6 py-4 font-semibold uppercase tracking-wider">Category</th>
+                <th className="px-6 py-4 font-semibold uppercase tracking-wider">Amount</th>
+                <th className="px-6 py-4 font-semibold uppercase tracking-wider text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
-              {payments.map((p) => {
-                const renter = renters.find(r => r.id === p.renter_id);
-                const property = properties.find(prop => prop.id === p.property_id);
+            <tbody className="divide-y divide-gray-100">
+              {payments.map((payment) => {
+                const renter = renters.find(r => r.id === payment.renter_id);
+                const displayDate = payment.received_date || payment.date;
                 return (
-                  <tr key={p.id} className="hover:bg-gray-50/30 transition-colors group">
-                    <td className="px-8 py-6">
-                      <div className="font-black text-gray-900">{p.date}</div>
-                      <div className="text-[10px] text-emerald-600 font-black uppercase mt-1">Paid: {p.received_date || p.date}</div>
+                  <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 text-gray-600 font-medium">
+                      {new Date(displayDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                     </td>
-                    <td className="px-8 py-6">
-                      <div className="font-black text-gray-900">{renter?.name || 'Unknown'}</div>
-                      <div className="text-[10px] text-blue-600 font-black uppercase flex items-center gap-1 mt-1">
-                        <SafeIcon icon={FiHome} className="text-[10px]" /> {property?.name || 'General'}
-                      </div>
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-gray-900">{renter?.name || 'Unknown'}</div>
+                      <div className="text-xs text-gray-500">{renter?.address}</div>
                     </td>
-                    <td className="px-8 py-6">
-                      <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-[10px] font-black uppercase tracking-wider block w-fit mb-1">
-                        {p.category}
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 uppercase">
+                        <SafeIcon icon={FiTag} className="text-[10px]" />
+                        {payment.category || 'Rent'}
                       </span>
-                      {p.note && (
-                        <p className="text-[10px] text-gray-400 font-medium italic line-clamp-1 max-w-[150px]">
-                          "{p.note}"
-                        </p>
-                      )}
                     </td>
-                    <td className="px-8 py-6">
-                      <div className="text-lg font-black text-gray-900">${parseFloat(p.amount).toFixed(2)}</div>
+                    <td className="px-6 py-4">
+                      <div className="text-base font-bold text-gray-900">${parseFloat(payment.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                      <div className="text-[10px] text-gray-400 font-medium uppercase">{payment.note}</div>
                     </td>
-                    <td className="px-8 py-6 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => handleDownload(p)} className="p-2.5 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all" title="Receipt">
-                          <SafeIcon icon={FiDownload} />
-                        </button>
-                        <button onClick={() => openEdit(p)} className="p-2.5 text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="Edit">
-                          <SafeIcon icon={FiEdit2} />
-                        </button>
-                        <button onClick={() => handleDelete(p.id)} className="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-all" title="Delete">
-                          <SafeIcon icon={FiTrash2} />
-                        </button>
-                      </div>
+                    <td className="px-6 py-4 text-right">
+                      <button 
+                        onClick={() => handleDownload(payment)}
+                        className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-700 font-bold bg-emerald-50 hover:bg-emerald-100 px-4 py-2 rounded-lg transition-all"
+                      >
+                        <SafeIcon icon={FiDownload} /> Receipt
+                      </button>
                     </td>
                   </tr>
                 );
@@ -177,116 +132,81 @@ const PaymentsManager = () => {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
-            <div className="p-10 bg-blue-600 text-white flex justify-between items-center">
-              <h3 className="text-2xl font-black">{editingPayment ? 'Edit Ledger' : 'New Payment'}</h3>
-              <button onClick={closeModal}><SafeIcon icon={FiPlus} className="rotate-45 text-3xl" /></button>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="px-6 py-5 border-b border-gray-100 bg-emerald-600 text-white flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold">Record Payment</h3>
+              </div>
+              <button onClick={() => setIsModalOpen(false)} className="text-white/80 hover:text-white">
+                <SafeIcon icon={FiPlus} className="rotate-45 text-2xl" />
+              </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-10 max-h-[70vh] overflow-y-auto space-y-6">
+            <form onSubmit={handleSubmit} className="p-6 space-y-5">
               {error && (
-                <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-xs font-bold border border-red-100 flex items-center gap-3">
-                  <SafeIcon icon={FiAlertCircle} className="text-lg shrink-0" />
+                <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-xs font-bold">
                   {error}
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Tenant</label>
-                  <select 
-                    required 
-                    className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none"
-                    value={formData.renter_id}
-                    onChange={e => setFormData({...formData, renter_id: e.target.value})}
-                  >
-                    <option value="">Select...</option>
-                    {renters.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Property</label>
-                  <select 
-                    required 
-                    className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none"
-                    value={formData.property_id}
-                    onChange={e => setFormData({...formData, property_id: e.target.value})}
-                  >
-                    <option value="">Select...</option>
-                    {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5 tracking-wider">Select Renter</label>
+                <select 
+                  required 
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none transition-all font-medium"
+                  value={formData.renter_id}
+                  onChange={e => setFormData({ ...formData, renter_id: e.target.value })}
+                >
+                  <option value="">-- Choose Renter --</option>
+                  {renters.map(r => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Due Date</label>
-                  <input 
-                    required 
-                    type="date" 
-                    className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    value={formData.date}
-                    onChange={e => setFormData({...formData, date: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Received Date</label>
-                  <input 
-                    required 
-                    type="date" 
-                    className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    value={formData.received_date}
-                    onChange={e => setFormData({...formData, received_date: e.target.value})}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Amount ($)</label>
-                  <input 
-                    required 
-                    type="number" 
-                    step="0.01"
-                    className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-black text-xl text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    value={formData.amount}
-                    onChange={e => setFormData({...formData, amount: e.target.value})}
-                    placeholder="0.00"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Category</label>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5 tracking-wider">Category</label>
                   <select 
-                    className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none"
+                    required 
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none"
                     value={formData.category}
-                    onChange={e => setFormData({...formData, category: e.target.value})}
+                    onChange={e => setFormData({ ...formData, category: e.target.value })}
                   >
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                   </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5 tracking-wider">Payment Date</label>
+                  <input 
+                    required 
+                    type="date" 
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none"
+                    value={formData.received_date}
+                    onChange={e => setFormData({ ...formData, received_date: e.target.value })}
+                  />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest flex items-center gap-2">
-                  <SafeIcon icon={FiEdit3} className="text-blue-600" />
-                  Memo / Note
-                </label>
-                <textarea 
-                  rows="2"
-                  className="w-full bg-gray-50 border-0 rounded-2xl px-6 py-4 font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
-                  value={formData.note}
-                  onChange={e => setFormData({...formData, note: e.target.value})}
-                  placeholder="e.g. Paid via Zelle, Check #402, or partial utilities..."
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1.5 tracking-wider">Amount ($)</label>
+                <input 
+                  required 
+                  type="number" 
+                  step="0.01" 
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 font-bold text-lg"
+                  placeholder="0.00"
+                  value={formData.amount}
+                  onChange={e => setFormData({ ...formData, amount: e.target.value })}
                 />
               </div>
 
-              <button 
-                disabled={loading}
-                type="submit" 
-                className="w-full py-5 bg-blue-600 text-white rounded-[20px] font-black uppercase text-sm tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-[0.98] disabled:opacity-50"
-              >
-                {loading ? 'Processing...' : editingPayment ? 'Update Ledger' : 'Save Payment'}
-              </button>
+              <div className="pt-4 flex gap-3">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-gray-500 font-bold">Cancel</button>
+                <button type="submit" disabled={loading} className="flex-[2] py-3 bg-emerald-600 text-white rounded-xl font-bold">
+                  {loading ? 'Recording...' : 'Record Payment'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
