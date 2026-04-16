@@ -18,7 +18,7 @@ const LoginPage = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
-
+    
     try {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
@@ -37,7 +37,9 @@ const LoginPage = () => {
           email,
           password,
           options: {
-            data: { full_name: fullName }
+            data: {
+              full_name: fullName
+            }
           }
         });
 
@@ -46,13 +48,14 @@ const LoginPage = () => {
         if (authData.user) {
           const { error: profileError } = await supabase
             .from('profiles_20240520')
-            .insert([{
-              id: authData.user.id,
-              role: userRole,
-              full_name: fullName,
-              email
-            }]);
-
+            .insert([
+              {
+                id: authData.user.id,
+                role: userRole,
+                full_name: fullName,
+                email
+              }
+            ]);
           if (profileError) throw profileError;
         }
       }
@@ -171,14 +174,6 @@ const LoginPage = () => {
               {loading ? 'Processing...' : isLogin ? 'Sign In' : 'Create Account'}
             </button>
           </form>
-          
-          {isLogin && (
-            <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-              <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Super Admin Access</p>
-              <p className="text-xs text-gray-600">Email: info@cimmeronstudios.com</p>
-              <p className="text-xs text-gray-600">Pass: crm123</p>
-            </div>
-          )}
         </div>
       </div>
     </div>
