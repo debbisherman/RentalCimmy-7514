@@ -17,6 +17,7 @@ export const AppProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [renters, setRenters] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [expenses, setExpenses] = useState([]);
 
   useEffect(() => {
     if (!supabase) {
@@ -46,6 +47,7 @@ export const AppProvider = ({ children }) => {
         setProfile(null);
         setRenters([]);
         setPayments([]);
+        setExpenses([]);
         setLoading(false);
       }
     });
@@ -72,18 +74,21 @@ export const AppProvider = ({ children }) => {
     try {
       const isAdmin = userProfile.role === 'landlord' || userProfile.role === 'super_admin';
       if (isAdmin) {
-        const [rRes, pRes] = await Promise.all([
+        const [rRes, pRes, eRes] = await Promise.all([
           supabase.from('renters_20240520').select('*').order('name'),
-          supabase.from('payments_20240520').select('*').order('received_date', { ascending: false })
+          supabase.from('payments_20240520').select('*').order('received_date', { ascending: false }),
+          supabase.from('expenses_20240520').select('*').order('expense_date', { ascending: false })
         ]);
         setRenters(rRes.data || []);
         setPayments(pRes.data || []);
+        setExpenses(eRes.data || []);
       } else {
         const { data: renterRecord } = await supabase.from('renters_20240520').select('*').eq('email', userProfile.email).maybeSingle();
         if (renterRecord) {
           const { data: pRes } = await supabase.from('payments_20240520').select('*').eq('renter_id', renterRecord.id).order('received_date', { ascending: false });
           setRenters([renterRecord]);
           setPayments(pRes || []);
+          setExpenses([]); // Renters don't see expenses
         }
       }
     } catch (err) { console.error('Data Err:', err); }
@@ -92,7 +97,7 @@ export const AppProvider = ({ children }) => {
   const value = {
     user, profile, loading, error,
     role: profile?.role || (user?.email === SUPER_ADMIN_EMAIL ? 'super_admin' : 'renter'),
-    renters, payments,
+    renters, payments, expenses,
     addRenter: async (d) => {
       const { data: existingProfile } = await supabase.from('profiles_20240520').select('id').eq('email', d.email).maybeSingle();
       const r = await supabase.from('renters_20240520').insert([{ 
@@ -109,11 +114,25 @@ export const AppProvider = ({ children }) => {
       return r;
     },
     addPayment: async (d) => {
-      // Send both column names for compatibility
       const r = await supabase.from('payments_20240520').insert([{
         ...d,
         received_date: d.received_date || d.date
       }]).select();
+      if (!r.error) await fetchData(profile);
+      return r;
+    },
+    addExpense: async (d) => {
+      const r = await supabase.from('expenses_20240520').insert([{ ...d, landlord_id: user.id }]).select();
+      if (!r.error) await fetchData(profile);
+      return r;
+    },
+    updateExpense: async (id, d) => {
+      const r = await supabase.from('expenses_20240520').update(d).eq('id', id).select();
+      if (!r.error) await fetchData(profile);
+      return r;
+    },
+    deleteExpense: async (id) => {
+      const r = await supabase.from('expenses_20240520').delete().eq('id', id);
       if (!r.error) await fetchData(profile);
       return r;
     },

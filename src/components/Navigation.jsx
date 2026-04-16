@@ -4,27 +4,24 @@ import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 import { useApp } from '../store/AppContext';
 
-const { FiHome, FiUsers, FiDollarSign, FiLogOut } = FiIcons;
+const { FiHome, FiUsers, FiDollarSign, FiLogOut, FiTrendingDown } = FiIcons;
 
 const Navigation = () => {
   const { role, signOut, profile, user } = useApp();
-
-  // Safety check: if email matches info@cimmeronstudios.com, force super_admin status locally
-  const activeRole = user?.email === 'info@cimmeronstudios.com' ? 'super_admin' : role;
   
+  const activeRole = user?.email === 'info@cimmeronstudios.com' ? 'super_admin' : role;
   const isAdmin = activeRole === 'landlord' || activeRole === 'super_admin';
   const isSuperAdmin = activeRole === 'super_admin';
 
-  const navItems = isAdmin 
-    ? [
-        { path: '/', label: 'Overview', icon: FiHome },
-        { path: '/renters', label: 'Renters', icon: FiUsers },
-        { path: '/payments', label: 'Payments', icon: FiDollarSign },
-      ] 
-    : [
-        { path: '/', label: 'My Dashboard', icon: FiHome },
-        { path: '/my-payments', label: 'My Payments', icon: FiDollarSign },
-      ];
+  const navItems = isAdmin ? [
+    { path: '/', label: 'Overview', icon: FiHome },
+    { path: '/renters', label: 'Renters', icon: FiUsers },
+    { path: '/payments', label: 'Income', icon: FiDollarSign },
+    { path: '/expenses', label: 'Expenses', icon: FiTrendingDown },
+  ] : [
+    { path: '/', label: 'My Dashboard', icon: FiHome },
+    { path: '/my-payments', label: 'My Payments', icon: FiDollarSign },
+  ];
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 h-screen flex flex-col fixed left-0 top-0 z-50">

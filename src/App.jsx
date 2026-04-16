@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import LandlordOverview from './pages/LandlordOverview';
 import RentersManager from './pages/RentersManager';
 import PaymentsManager from './pages/PaymentsManager';
+import ExpensesManager from './pages/ExpensesManager';
 import RenterDashboard from './pages/RenterDashboard';
 
 function App() {
@@ -27,13 +28,7 @@ function App() {
         <div className="max-w-md w-full bg-white p-8 rounded-3xl shadow-xl border border-red-100 text-center">
           <h2 className="text-2xl font-black text-red-600 mb-2">Configuration Error</h2>
           <p className="text-gray-600 mb-6 font-medium">{error}</p>
-          <div className="p-4 bg-gray-50 rounded-2xl text-left text-xs font-mono text-gray-500 mb-6">
-            Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your .env file or host environment.
-          </div>
-          <button 
-            onClick={() => window.location.reload()}
-            className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition-all"
-          >
+          <button onClick={() => window.location.reload()} className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition-all">
             Retry Connection
           </button>
         </div>
@@ -57,6 +52,7 @@ function App() {
                 <Route path="/" element={<LandlordOverview />} />
                 <Route path="/renters" element={<RentersManager />} />
                 <Route path="/payments" element={<PaymentsManager />} />
+                <Route path="/expenses" element={<ExpensesManager />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </>
             ) : (
